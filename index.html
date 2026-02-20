@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario Suc 2860</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyACNui2w1-k2P2yxrq_Ee6oh9x2EV5XJQ4",
+  authDomain: "firestore-database-bf25f.firebaseapp.com",
+  projectId: "firestore-database-bf25f",
+  storageBucket: "firestore-database-bf25f.firebasestorage.app",
+  messagingSenderId: "571420534987",
+  appId: "1:571420534987:web:985ec5f93f3d9d2989d34e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+</script>
+
+<style>
+body{margin:0;font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#e3f2fd,#bbdefb);}
+header{background:white;padding:12px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);gap:10px;}
+.logo{width:100px}
+.container{max-width:1100px;margin:auto;padding:15px;}
+.card{background:white;border-radius:16px;padding:18px;margin-bottom:18px;box-shadow:0 10px 25px rgba(0,0,0,0.1);}
+.producto{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px;border-radius:12px;background:#f7fbff;margin:10px 0;}
+.producto img{width:70px;height:70px;border-radius:10px;background:white;object-fit:contain;padding:5px;}
+button{background:linear-gradient(135deg,#1976d2,#42a5f5);color:white;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;margin:4px;}
+button:active{transform:scale(.97)}
+input{padding:8px;border-radius:8px;border:1px solid #ccc;max-width:140px;}
+.login{max-width:320px;margin:80px auto;text-align:center;}
+</style>
+</head>
+
+<body>
+
+<div id="loginBox" class="card login">
+<h2>Acceso al sistema</h2>
+<input id="usuario" placeholder="Usuario"><br><br>
+<input id="password" type="password" placeholder="Contraseña"><br><br>
+<button onclick="login()">Ingresar</button>
+<p id="error" style="color:red"></p>
+</div>
+
+<div id="sistema" style="display:none">
+
+<header>
+<div>
+<img src="logo.png" class="logo">
+<h3>Sucursal 2860</h3>
+</div>
+<div>
+<span id="usuarioActivo"></span>
+<button onclick="logout()">Cerrar sesión</button>
+</div>
+</header>
+
+<div class="container">
+
+<div class="card">
+<h3>Productos</h3>
+<div id="zonaAgregar"></div>
+<div id="listaProductos"></div>
+</div>
+
+<div class="card">
+<h3>Mi conteo</h3>
+<button onclick="mostrarConteo()">Ver mi conteo</button>
+<button onclick="exportarPDF()">Exportar PDF</button>
+<div id="resultado"></div>
+</div>
+
+<div class="card" id="buzonAlma" style="display:none">
+<h3>📥 Buzón de reportes</h3>
+<div id="listaReportes"></div>
+</div>
+
+</div>
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+const usuarios={
+"497271":"suc2860","Miros":"empleado1","Juan":"empleado2",
+"Antonio":"empleado3","Lupita":"empleado4","Yezica":"empleado5",
+"Alan":"empleado6","Getse":"empleado7","Alma":"Jefa1",
+"Melissa":"Jefa3","Jonathan":"Jefe2","Gio":"Nocturno1",
+"Alexia":"Empleado8","Gladis":"Empleado9","Ale":"Empleado10",
+"Chris":"Empleado11","Ivette":"Empleado12","Lluvia":"Empleado13",
+"Tania":"Empleado14"
+};
+
+const puedeEditar=["497271","Alma"];
+
+let productos=[];
+let usuarioActual=null;
+let conteos={};
+
+function login(){
+const u=usuario.value,p=password.value;
+if(usuarios[u]&&usuarios[u]===p){
+usuarioActual=u;
+loginBox.style.display="none";
+sistema.style.display="block";
+usuarioActivo.textContent="Usuario: "+u;
+cargarProductos();
+if(u==="Alma") cargarReportesAlma();
+}else error.textContent="Datos incorrectos";
+}
+
+function logout(){location.reload();}
+
+/* PRODUCTOS GLOBAL */
+function cargarProductos(){
+db.collection("productos").onSnapshot(snapshot=>{
+if(snapshot.empty){
+cargarProductosIniciales();
+return;
+}
+productos=[];
+snapshot.forEach(doc=>productos.push({id:doc.id,...doc.data()}));
+renderProductos();
+});
+}
+
+function cargarProductosIniciales(){
+const lista=[
+{codigo:"1411772",nombre:"DESOD ARM&HAMMER U/M FRESH 73G"},
+{codigo:"1419340",nombre:"DESOD ARM&HAMMER U/M SPORT 73G"},
+{codigo:"1215590",nombre:"DESOD AXE ANARCHY 150M BDY/SP"},
+{codigo:"1215531",nombre:"DESOD AXE APOLLO 150ML BDY/SPY"},
+{codigo:"1166530",nombre:"DESOD AXE APOLLO AP/AE 152ML C"},
+{codigo:"1166514",nombre:"DESOD AXE APOLLO CAB/45GR BARR"},
+{codigo:"1420275",nombre:"DESOD AXE AQUA CITR 150ML BOD"},
+{codigo:"1207911",nombre:"DESOD AXE BLACK 150ML SPY 48H"},
+{codigo:"1234790",nombre:"DESOD AXE BLACK NIGHT BODY 150"},
+{codigo:"1410555",nombre:"DESOD AXE BLACK RE BZRP 210ML"},
+{codigo:"1410563",nombre:"DESOD AXE BLACK RE BZRP 45GR B"},
+{codigo:"1420291",nombre:"DESOD AXE BLUE/LAVN 150ML BOD"},
+{codigo:"1444468",nombre:"DESOD AXE CHERRY SPRITZ 150ML"},
+{codigo:"1267760",nombre:"DESOD AXE COLLISION 150ML AER"},
+{codigo:"1215515",nombre:"DESOD AXE CONVICTION 150M BDY"},
+{codigo:"1215540",nombre:"DESOD AXE DARK TEMP 150ML BDY"},
+{codigo:"1407864",nombre:"DESOD AXE DARK TEMP 210ML BDY"},
+{codigo:"1387634",nombre:"DESOD AXE EPIC FR 152ML A/TR S"},
+{codigo:"1215558",nombre:"DESOD AXE EXCITE 150ML BDY/SPY"},
+{codigo:"1120301",nombre:"DESOD AXE EXCITE 72H 152ML SPY"},
+{codigo:"1361325",nombre:"DESOD AXE FUSION 150ML 3PZ PAC"},
+{codigo:"1215582",nombre:"DESOD AXE FUSION 150ML BODY SP"},
+{codigo:"1322524",nombre:"DESOD AXE ICE CHILL 150M BOY/S"},
+{codigo:"1322559",nombre:"DESOD AXE ICE CHILL SECO 152M"},
+{codigo:"1469258",nombre:"DESOD AXE INDIGO HAZE 150ML SP"},
+{codigo:"1360124",nombre:"DESOD AXE INTENSE S/FRSH 150M"},
+{codigo:"1294865",nombre:"DESOD AXE KILO 150ML SPRAY CAB"},
+{codigo:"1469029",nombre:"DESOD AXE MARSH/SMOKE 150ML SP"},
+{codigo:"1433776",nombre:"DESOD AXE P/COCONUT BZRP 150M"},
+{codigo:"1444549",nombre:"DESOD AXE PEACH INFUSION 150M"},
+{codigo:"1469240",nombre:"DESOD AXE WHITE/VETIV 150ML SP"},
+{codigo:"1215523",nombre:"DESOD AXE YOUNG 150ML BDY/SPY"},
+{codigo:"1345532",nombre:"DESOD BRUT CLASSIC 150ML AER"},
+{codigo:"978299",nombre:"DESOD BRUT CLASSIC 208ML AEROS"},
+{codigo:"1011138",nombre:"DESOD BRUT CLASSIC 65GR STICK"},
+{codigo:"978310",nombre:"DESOD BRUT CLASSIC ANTI 50G RO"},
+{codigo:"1433466",nombre:"DESOD BRUT GHOST ANTI 50G ROLL"}
+];
+lista.forEach(p=>db.collection("productos").add(p));
+}
+
+function renderProductos(){
+listaProductos.innerHTML="";
+productos.forEach((p,i)=>{
+const div=document.createElement("div");
+div.className="producto";
+div.innerHTML=`
+<b>${p.nombre}</b><br>
+Código: ${p.codigo}<br>
+Mi conteo:
+<input type="number" min="0"
+onchange="conteos['${p.id}']=this.value">`;
+listaProductos.appendChild(div);
+});
+}
+
+function mostrarConteo(){
+resultado.innerHTML="<b>Mi conteo:</b><br>";
+productos.forEach(p=>{
+resultado.innerHTML+=`${p.nombre} — ${conteos[p.id]||0}<br>`;
+});
+}
+
+function guardarReporteParaAlma(usuario,pdf){
+db.collection("reportes").add({usuario,fecha:new Date(),archivo:pdf});
+}
+
+function cargarReportesAlma(){
+document.getElementById("buzonAlma").style.display="block";
+db.collection("reportes").orderBy("fecha","desc").onSnapshot(snap=>{
+listaReportes.innerHTML="";
+snap.forEach(doc=>{
+const r=doc.data();
+const b=document.createElement("button");
+b.textContent=`Abrir reporte de ${r.usuario}`;
+b.onclick=()=>window.open(r.archivo);
+listaReportes.appendChild(b);
+});
+});
+}
+
+function exportarPDF(){
+const doc=new jsPDF();
+doc.text("Conteo - Sucursal 2860",20,20);
+doc.text("Empleado: "+usuarioActual,20,30);
+let y=45;
+productos.forEach(p=>{
+doc.text(`${p.nombre} - ${conteos[p.id]||0}`,20,y);
+y+=10;
+});
+doc.save("mi_conteo.pdf");
+guardarReporteParaAlma(usuarioActual,doc.output("datauristring"));
+}
+</script>
+
+</body>
+</html>
